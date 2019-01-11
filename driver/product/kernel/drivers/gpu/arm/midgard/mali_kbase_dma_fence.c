@@ -347,7 +347,11 @@ int kbase_dma_fence_wait(struct kbase_jd_atom *katom,
 		struct reservation_object *obj = info->resv_objs[i];
 
 		if (!test_bit(i, info->dma_fence_excl_bitmap)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+			err = reservation_object_reserve_shared(obj, 1);
+#else
 			err = reservation_object_reserve_shared(obj);
+#endif
 			if (err) {
 				dev_err(katom->kctx->kbdev->dev,
 					"Error %d reserving space for shared fence.\n", err);
