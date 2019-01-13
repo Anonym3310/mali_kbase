@@ -507,7 +507,7 @@ static bool kbase_pm_transition_core_type(struct kbase_device *kbdev,
 
 	/* Perform transitions if any */
 	kbase_pm_invoke(kbdev, type, powerup, ACTION_PWRON);
-#if !PLATFORM_POWER_DOWN_ONLY
+#ifndef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
 	kbase_pm_invoke(kbdev, type, powerdown, ACTION_PWROFF);
 #endif
 
@@ -1308,12 +1308,21 @@ void kbase_pm_cache_snoop_disable(struct kbase_device *kbdev)
 static int kbase_pm_do_reset(struct kbase_device *kbdev)
 {
 	struct kbasep_reset_timeout_data rtdata;
+	struct kbase_pm_callback_conf *callbacks;
+	int ret;
+
+	callbacks = (struct kbase_pm_callback_conf *)POWER_MANAGEMENT_CALLBACKS;
 
 	KBASE_TRACE_ADD(kbdev, CORE_GPU_SOFT_RESET, NULL, NULL, 0u, 0);
 
 	KBASE_TLSTREAM_JD_GPU_SOFT_RESET(kbdev);
 
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_COMMAND),
+	if (callbacks->soft_reset_callback) {
+		ret = callbacks->soft_reset_callback(kbdev);
+		if (ret)
+			return ret;
+	} else
+		kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_COMMAND),
 						GPU_COMMAND_SOFT_RESET);
 
 	/* Unmask the reset complete interrupt only */
